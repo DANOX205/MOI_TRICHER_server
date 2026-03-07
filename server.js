@@ -8,7 +8,7 @@ const RoomState = Object.freeze({
 const WebSocket = require("ws");
 
 // Port du serveur
-const PORT = 6510;
+const PORT = process.env.PORT || 6510;
 
 // Nbr de Joueurs
 let Nbr_Joueurs = 0;
@@ -446,4 +446,5 @@ function broadcastCancel(){
             }));
         }
     });
+
 }
