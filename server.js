@@ -8,7 +8,7 @@ const RoomState = Object.freeze({
 const WebSocket = require("ws");
 
 // Port du serveur
-const PORT = process.env.PORT || 6510;
+const PORT = 6510;
 
 // Timer
 let ACTIVATE_Timer = false; // false
@@ -283,7 +283,9 @@ wss.on("connection", (ws) => {
             PrintCarte(data.payload.Valeur, data.payload.playerNum);
             special_card_power[0].power = 0;
             Players_that_cant_play = 0;
-            ActionAfterPlay(joueur,data.payload.IsComboing, data.payload.Valeur, data.payload.OtherValeur);
+            if (CanPlayCard(data.payload.IsComboing, data.payload.Valeur, data.payload.OtherValeur)){
+                ActionAfterPlay(joueur,data.payload.IsComboing, data.payload.Valeur, data.payload.OtherValeur);
+            }
             if (isGameOver()){
                 roomState = RoomState.GAME_ENDED;
                 broadcastEndGame();
@@ -521,6 +523,28 @@ function findPlayerByNum(num) {
 
 function findPlayerByNum_players(num) {
     return Object.values(players).find(player => player.num === num);
+}
+
+function CanPlayCard(isCombo, Carte1, Carte2){
+    if (isCombo){
+        if (findValueCombo(Carte1, Carte2) === 0){
+            return false;
+        } else {
+            return true;
+        }
+    } else {
+        const val = Carte1 % 13;
+        if ((val === 0) || (val === 11) || (val === 12)){ // C'est un Valet, une reine ou un Roi
+            return true;
+        } else {
+            if (val >= Turn){
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+    }
 }
 
 function ActionAfterPlay(joueur,isComboing, Valeur, OtherValeur){
