@@ -8,7 +8,7 @@ const RoomState = Object.freeze({
 const WebSocket = require("ws");
 
 // Port du serveur
-const PORT = 6510;
+const PORT = process.env.PORT || 6510;
 
 // Timer
 let ACTIVATE_Timer = false; // false
