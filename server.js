@@ -61,9 +61,15 @@ wss.on("connection", (ws) => {
         console.log("🧑‍💻 Un Client vient de se reconnecter \n");
         console.log("Menottes : " + players[slotIndex].Menottes);
         console.log("Lunettes : " + players[slotIndex].Lunettes);
+        console.log("Objet1 : " + players[slotIndex].Object1);
+        console.log("Objet2 : " + players[slotIndex].Object2);
+        console.log("Objet3 : " + players[slotIndex].Object3);
         NumNouveauJoueur = players[slotIndex].num;
         MenottesNouveauJoueur = players[slotIndex].Menottes;
-        LunettesNouveauJoueur = players[slotIndex].Lunettes
+        LunettesNouveauJoueur = players[slotIndex].Lunettes;
+        Object1NouveauJoueur = players[slotIndex].Object1;
+        Object2NouveauJoueur = players[slotIndex].Object2;
+        Object3NouveauJoueur = players[slotIndex].Object3;
         delete players[slotIndex];
         // Je dois lui envoyer un paquet Game Started
         if (ws.readyState === WebSocket.OPEN) {
@@ -82,6 +88,9 @@ wss.on("connection", (ws) => {
         NumNouveauJoueur = Nbr_Joueurs;
         MenottesNouveauJoueur = false;
         LunettesNouveauJoueur = false;
+        Object1NouveauJoueur = 0;
+        Object2NouveauJoueur = 0;
+        Object3NouveauJoueur = 0;
         console.log("💻 Nbr de Joueurs : " + Nbr_Joueurs + "\n");
         if ((Nbr_Joueurs > MAX_PLAYERS) || (roomState === RoomState.GAME_STARTED) || (roomState === RoomState.GAME_ENDED)) { 
             console.log("⛔ Connexion refusée : serveur plein");
@@ -118,7 +127,10 @@ wss.on("connection", (ws) => {
                 triche: data.payload.Triche,
                 Cheating_Timer_index : -1,
                 Menottes : MenottesNouveauJoueur,
-                Lunettes : LunettesNouveauJoueur
+                Lunettes : LunettesNouveauJoueur,
+                Object1 : Object1NouveauJoueur,
+                Object2 : Object2NouveauJoueur,
+                Object3 : Object3NouveauJoueur
             };
             if (data.payload.Triche){
                 Nbr_Triche = Nbr_Triche + 1;
@@ -182,6 +194,9 @@ wss.on("connection", (ws) => {
 
         if (data.type === "GameInfo"){
             broadcastUpdateGame();
+            /*if (Triche_allowed) {
+                broadcastUpdateObjects();
+            }*/
         }
 
         if (data.type === "ReadyOrNot") {
@@ -234,10 +249,15 @@ wss.on("connection", (ws) => {
                             Echange : false});
                     });
                 }
+
                 const payload = {
                     cartes : cartes,
                     Triche_allowed : Triche_allowed
                 };
+
+                for (const id in players) {
+                    chooseItems(players[id].num);
+                }
 
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
@@ -375,6 +395,7 @@ wss.on("connection", (ws) => {
                         } else {
                             CurrentCard = PreviousCurrentCard;
                             broadcastCheatingAnimation(data.payload.Source,-1,1, null);
+                            removeItem(data.payload.Source,data.payload.ObjectID);
                             startCheatingTimer(data.payload.Source);
                         }
                         break;
@@ -387,6 +408,7 @@ wss.on("connection", (ws) => {
                         if (player.Cheating_Timer_index != -1){
                             // Le joueur a triché ! Il pioche deux cartes.
                             broadcastCheatingAnimation(data.payload.Source,data.payload.Destination,2, null);
+                            removeItem(data.payload.Source,data.payload.ObjectID);
                             piocherCarte(cartes, false, -1);
                             piocherCarte(cartes, false, -1);
                             stopCheating(data.payload.Destination);
@@ -398,6 +420,7 @@ wss.on("connection", (ws) => {
                         console.log("🎣 TRICHE : Canne à pêche en action !");
                         if ((search_card(data.payload.Source, data.payload.Carte)) && (playerhaslessthan2Cards(data.payload.Source, data.payload.Destination))) { // Est-ce que la carte est dans le jeu du Joueur ? 
                             broadcastCheatingAnimation(data.payload.Source,data.payload.Destination,3, null);
+                            removeItem(data.payload.Source,data.payload.ObjectID);
                             giveCardtoAnotherPlayer(data.payload.Source,data.payload.Destination,data.payload.Carte);
                             startCheatingTimer(data.payload.Source);
                         } else {
@@ -417,6 +440,7 @@ wss.on("connection", (ws) => {
                         let playerA = findPlayerByNum_players(data.payload.Destination);
                         playerA.Menottes = true;
                         broadcastCheatingAnimation(data.payload.Source,data.payload.Destination,6, null);
+                        removeItem(data.payload.Source,data.payload.ObjectID);
                         startCheatingTimer(data.payload.Source);
                         break;
                     case 7 : // Ce sont des Lunettes
@@ -424,12 +448,14 @@ wss.on("connection", (ws) => {
                         let playerB = findPlayerByNum_players(data.payload.Destination);
                         playerB.Lunettes = true;
                         broadcastCheatingAnimation(data.payload.Source,data.payload.Destination,7, null);
+                        removeItem(data.payload.Source,data.payload.ObjectID);
                         startCheatingTimer(data.payload.Source);
                         break;
                     case 8: // C'est le 4x4
                         console.log("🛻 TRICHE : 4x4 en action !");
                         if (check4x4(data.payload.Source)){
                             broadcastCheatingAnimation(data.payload.Source,-1,8, null);
+                            removeItem(data.payload.Source,data.payload.ObjectID);
                             this.Turn = -1;
                             setTimeout(() => {
                                 WINNER = data.payload.Source;
@@ -507,6 +533,28 @@ function isGameOver(){
         }
     }
     return false;
+}
+
+function chooseItems(playerNum){
+    let joueur = findPlayerByNum_players(playerNum);
+    let items_list = [1,2,3,4,6,7,8];
+    joueur.Object1 = items_list.splice(Math.floor(Math.random() * items_list.length),1)[0];
+    joueur.Object2 = items_list.splice(Math.floor(Math.random() * items_list.length),1)[0];
+    joueur.Object3 = items_list.splice(Math.floor(Math.random() * items_list.length),1)[0];
+    return [joueur.Object1,joueur.Object2,joueur.Object3];
+}
+
+function removeItem(playerNum, ItemID){
+    const joueur = findPlayerByNum_players(playerNum);
+    if (joueur.Object1 === ItemID){
+        joueur.Object1 = 0;
+    } else if (joueur.Object2 === ItemID) {
+        joueur.Object2 = 0;
+    } else if (joueur.Object3 === ItemID) {
+        joueur.Object3 = 0;
+    } else {
+        console.log("❌ Impossible de retirer l'objet.");
+    }
 }
 
 function getEchange(payload){
@@ -1024,7 +1072,8 @@ function broadcastUpdateGame(){
         CurrentCard: CurrentCard,
         PreviousCurrentCard : PreviousCurrentCard,
         Cartes : cartes,
-        Special_Power : special_card_power
+        Special_Power : special_card_power,
+        Triche_allowed : Triche_allowed
     };
 
     wss.clients.forEach(client => {
@@ -1036,7 +1085,6 @@ function broadcastUpdateGame(){
         }
     });
 }
-
 
 function broadcastPlayers() {
     //console.log("Broadcast envoyé à", wss.clients.size, "clients");
