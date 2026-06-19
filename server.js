@@ -582,10 +582,11 @@ function CanPlayCard(isCombo, Carte1, Carte2){
         }
     } else {
         const val = Carte1 % 13;
+        const currentval = CurrentCard %13;
         if ((val === 0) || (val === 11) || (val === 12)){ // C'est un Valet, une reine ou un Roi
             return true;
         } else {
-            if (val >= Turn){
+            if (val >= currentval) {
                 return true;
             } else {
                 return false;
