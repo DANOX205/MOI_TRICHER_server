@@ -582,7 +582,12 @@ function CanPlayCard(isCombo, Carte1, Carte2){
         }
     } else {
         const val = Carte1 % 13;
-        const currentval = CurrentCard %13;
+        let currentval = CurrentCard %13;
+        if (CurrentCard > 53){ // C'est une carte combo
+            currentval = 11;
+        }else if ((currentval === 11) || (currentval === 12)){ // C'est un valet / dame
+            currentval = 5;
+        }
         if ((val === 0) || (val === 11) || (val === 12)){ // C'est un Valet, une reine ou un Roi
             return true;
         } else {
